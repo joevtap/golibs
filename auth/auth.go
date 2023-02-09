@@ -14,6 +14,8 @@ type JWT struct {
 	secret []byte
 }
 
+type MapClaims map[string]interface{}
+
 // SetSecret sets the secret key for generating and validating JWT tokens.
 func (j *JWT) SetSecret(s string) {
 	j.secret = []byte(s)
@@ -26,7 +28,7 @@ func (j *JWT) SetSecret(s string) {
 // The token is signed using the secret key.
 //
 // Error can be nil.
-func (j JWT) GenerateToken(minutesToExpire int, customClaims jwt.MapClaims) (string, error) {
+func (j JWT) GenerateToken(minutesToExpire int, customClaims MapClaims) (string, error) {
 	claims := jwt.MapClaims{
 		"exp": jwt.NewNumericDate(time.Now().Add(time.Duration(minutesToExpire) * time.Minute)),
 		"iss": "github.com/joevtap",
@@ -47,7 +49,7 @@ func (j JWT) GenerateToken(minutesToExpire int, customClaims jwt.MapClaims) (str
 // Args can be used to override the default expiration time.
 //
 //   - args[0]: The number of minutes before the token expires.
-func (j JWT) GenerateRefreshToken(customClaims jwt.MapClaims, args ...int) (string, error) {
+func (j JWT) GenerateRefreshToken(customClaims MapClaims, args ...int) (string, error) {
 	minutesToExpire := 15
 
 	if len(args) > 0 {
@@ -73,8 +75,14 @@ func (j JWT) ParseToken(signedString string) (*jwt.Token, error) {
 }
 
 // GetTokenClaims returns the claims of a JWT token.
-func (JWT) GetTokenClaims(token *jwt.Token) jwt.MapClaims {
-	return token.Claims.(jwt.MapClaims)
+func (JWT) GetTokenClaims(token *jwt.Token) MapClaims {
+	mapClaims := make(MapClaims)
+
+	for key, value := range token.Claims.(jwt.MapClaims) {
+		mapClaims[key] = value
+	}
+
+	return mapClaims
 }
 
 // IsTokenExpiring returns true if the token is expiring in the next minutesLeft minutes.
