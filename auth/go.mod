@@ -1,4 +1,4 @@
-module github.com/joevtap/go-libs/auth
+module github.com/joevtap/golibs/auth
 
 go 1.19
 
