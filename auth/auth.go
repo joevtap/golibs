@@ -1,9 +1,9 @@
-// Package auth provides authentication utilities.
+// Package auth provides authentication utilities using JWT
 package auth
 
 import (
+	"errors"
 	"fmt"
-	"log"
 
 	"time"
 
@@ -15,7 +15,7 @@ type JWT struct {
 	secret []byte
 }
 
-type MapClaims map[string]interface{}
+type MapClaims jwt.MapClaims
 
 // SetSecret sets the secret key for generating and validating JWT tokens.
 func (j *JWT) SetSecret(s string) {
@@ -30,6 +30,10 @@ func (j *JWT) SetSecret(s string) {
 //
 // Error can be nil.
 func (j JWT) GenerateToken(minutesToExpire int, customClaims MapClaims) (string, error) {
+	if minutesToExpire < 0 {
+		return "", errors.New("minutesToExpire is negative")
+	}
+
 	claims := jwt.MapClaims{
 		"exp": jwt.NewNumericDate(time.Now().Add(time.Duration(minutesToExpire) * time.Minute)),
 		"iss": "github.com/joevtap",
@@ -94,54 +98,11 @@ func (j JWT) IsTokenExpiring(token *jwt.Token, minutesLeft int) bool {
 	return time.Until(time.Unix(int64(expirationTime.(float64)), 0)).Minutes() <= float64(minutesLeft)
 }
 
-// GrantPermission grants a permission to a token.
-func (j JWT) GrantPermission(token *jwt.Token, permission string) {
-	if !j.HasPermission(token, permission) {
-		claims := j.GetTokenClaims(token)
-		claims["permissions"] = append(claims["permissions"].([]string), permission)
-	}
-}
-
-// RevokePermission revokes a permission from a token.
-func (j JWT) RevokePermission(token *jwt.Token, permission string) {
-	if j.HasPermission(token, permission) {
-		claims := j.GetTokenClaims(token)
-		permissions := claims["permissions"].([]string)
-
-		for i, p := range permissions {
-			if p == permission {
-				permissions = append(permissions[:i], permissions[i+1:]...)
-				break
-			}
-		}
-
-		claims["permissions"] = permissions
-	}
-}
-
-// HasPermission returns true if the token has the permission.
-func (j JWT) HasPermission(token *jwt.Token, permission string) bool {
-	claims := j.GetTokenClaims(token)
-	permissions := claims["permissions"].([]string)
-
-	for _, p := range permissions {
-		if p == permission {
-			return true
-		}
-	}
-
-	return false
-}
-
 // HashAndSaltPassword hashes and salts a password.
 //
 // It returns the hash in string format.
 func (JWT) HashAndSaltPassword(password string) string {
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		log.Panic(err)
-	}
-
+	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	return string(hash)
 }
 
